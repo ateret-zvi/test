@@ -21,6 +21,7 @@ const path = require('path');
 const crypto = require('crypto');
 const http = require('http');
 const https = require('https');
+const { execFileSync } = require('child_process');
 const { WebSocketServer } = require('ws');
 const { create: createYoutubeDl } = require('youtube-dl-exec');
 
@@ -32,14 +33,21 @@ const CACHE_FILE = path.join(__dirname, 'cache.json');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
 // ---------------------------------------------------------------------------
-// Binary discovery (yt-dlp + ffmpeg)
+// Binary discovery (yt-dlp)
 //
-// The bundled yt-dlp binary can fail to download behind corporate proxies, and
-// ffmpeg lives in a separate install. We locate real binaries by checking (in
-// order): explicit env override, common winget/scoop/choco install locations,
-// and finally the system PATH.
+// The bundled yt-dlp binary can fail to download behind restrictive proxies, so
+// we locate a real binary by checking (in order): an explicit env override,
+// common per-OS install locations, and finally the system PATH. Only metadata
+// is fetched (no media download), so ffmpeg is not required.
 // ---------------------------------------------------------------------------
-function searchDir(root, exeName, maxDepth) {
+const IS_WINDOWS = process.platform === 'win32';
+
+/** Executable file name for the current platform ("yt-dlp" vs "yt-dlp.exe"). */
+function exeName(base) {
+  return IS_WINDOWS ? `${base}.exe` : base;
+}
+
+function searchDir(root, name, maxDepth) {
   if (maxDepth < 0 || !fs.existsSync(root)) return null;
   let entries;
   try {
@@ -49,57 +57,89 @@ function searchDir(root, exeName, maxDepth) {
   }
   for (const entry of entries) {
     const full = path.join(root, entry.name);
-    if (entry.isFile() && entry.name.toLowerCase() === exeName.toLowerCase()) {
+    if (entry.isFile() && entry.name.toLowerCase() === name.toLowerCase()) {
       return full;
     }
   }
   for (const entry of entries) {
     if (entry.isDirectory()) {
-      const found = searchDir(path.join(root, entry.name), exeName, maxDepth - 1);
+      const found = searchDir(path.join(root, entry.name), name, maxDepth - 1);
       if (found) return found;
     }
   }
   return null;
 }
 
-function discoverBinary(exeName, envVar) {
+function discoverBinary(base, envVar) {
+  const target = exeName(base);
+
   const override = process.env[envVar];
   if (override && fs.existsSync(override)) return override;
 
   const home = os.homedir();
-  const roots = [
-    path.join(home, 'AppData', 'Local', 'Microsoft', 'WinGet', 'Packages'),
-    path.join(home, 'scoop', 'apps'),
-    'C:\\ProgramData\\chocolatey\\bin',
-    'C:\\ffmpeg\\bin',
-  ];
+  const roots = IS_WINDOWS
+    ? [
+        path.join(home, 'AppData', 'Local', 'Microsoft', 'WinGet', 'Packages'),
+        path.join(home, 'scoop', 'apps'),
+        'C:\\ProgramData\\chocolatey\\bin',
+      ]
+    : [
+        '/usr/local/bin',
+        '/usr/bin',
+        '/bin',
+        '/snap/bin',
+        path.join(home, '.local', 'bin'),
+        path.join(home, 'bin'),
+      ];
+  // Windows package managers nest binaries a few levels deep; the standard Linux
+  // bin directories hold the executable directly, so a shallow scan is enough.
+  const depth = IS_WINDOWS ? 4 : 1;
   for (const root of roots) {
-    const found = searchDir(root, exeName, 4);
+    const found = searchDir(root, target, depth);
     if (found) return found;
   }
   return null; // fall back to PATH
 }
 
-const YT_DLP_PATH = discoverBinary('yt-dlp.exe', 'YT_DLP_PATH');
-
-// yt-dlp needs a JS runtime (Deno or Node) on PATH to solve YouTube's signature
-// ("n") challenge. Make sure the discovered Deno is visible to the yt-dlp child
-// process, otherwise many downloads fail.
-const DENO_PATH = discoverBinary('deno.exe', 'DENO_PATH');
-if (DENO_PATH) {
-  process.env.PATH = `${path.dirname(DENO_PATH)}${path.delimiter}${process.env.PATH}`;
-}
+const YT_DLP_PATH = discoverBinary('yt-dlp', 'YT_DLP_PATH');
+const YT_DLP_BIN = YT_DLP_PATH || exeName('yt-dlp');
 
 // A youtube-dl-exec instance bound to the discovered (or PATH) yt-dlp binary.
-const youtubedl = createYoutubeDl(YT_DLP_PATH || 'yt-dlp');
+const youtubedl = createYoutubeDl(YT_DLP_BIN);
 
-console.log('yt-dlp :', YT_DLP_PATH || 'yt-dlp (from PATH)');
-console.log('deno   :', DENO_PATH || '(not found — signature solving may fail)');
+// Confirm yt-dlp is actually installed and runnable before serving requests.
+// Without it the server can't resolve any song metadata, so print a clear,
+// actionable message instead of failing later on the first add.
+function ytDlpVersion(bin) {
+  try {
+    return execFileSync(bin, ['--version'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+  } catch {
+    return null;
+  }
+}
+
+const YT_DLP_VERSION = ytDlpVersion(YT_DLP_BIN);
+if (YT_DLP_VERSION) {
+  console.log(`yt-dlp : ${YT_DLP_BIN} (version ${YT_DLP_VERSION})`);
+} else {
+  console.error('yt-dlp : NOT FOUND — the server cannot fetch song metadata.');
+  console.error('  Install it and/or set YT_DLP_PATH, for example:');
+  if (IS_WINDOWS) {
+    console.error('    winget install yt-dlp.yt-dlp');
+  } else {
+    console.error('    sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \\');
+    console.error('      -o /usr/local/bin/yt-dlp && sudo chmod a+rx /usr/local/bin/yt-dlp');
+    console.error('    # or:  pipx install yt-dlp   /   pip install -U yt-dlp');
+  }
+}
 
 // Optional network/auth options for restricted environments. YouTube now often
 // requires a signed-in session (PO token) to download media; the most reliable
 // fix on a locked-down machine is a cookies.txt exported from your browser.
-//   ./cookies.txt (auto)   OR  YTDLP_COOKIES_FILE=path\to\cookies.txt
+//   ./cookies.txt (auto)   OR  YTDLP_COOKIES_FILE=path/to/cookies.txt
 //   YTDLP_PROXY            e.g. http://user:pass@proxy:8080
 //   YTDLP_COOKIES_BROWSER  e.g. chrome | edge | firefox
 //   YTDLP_PLAYER_CLIENT    e.g. android | web_safari | tv
