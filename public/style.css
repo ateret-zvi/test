@@ -110,6 +110,70 @@ body {
   text-align: center;
 }
 
+.listeners-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.listeners-label {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.listeners-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-height: 34px;
+}
+
+.listener {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 3px;
+  background: #12121a;
+  border: 1px solid #2a2a38;
+  border-radius: 999px;
+}
+
+.listener-avatar {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  line-height: 1;
+  background: #1c1c26;
+  border-radius: 50%;
+}
+
+.listener-name {
+  font-size: 0.85rem;
+  color: var(--text);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.listener-more {
+  color: var(--muted);
+  font-size: 1.3rem;
+  padding: 0 4px;
+}
+
+.listeners-empty {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
 .np-label {
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -890,3 +954,146 @@ body {
 .chat-form button:hover {
   filter: brightness(1.08);
 }
+
+/* ---------------------------------------------------------------------------
+   Lobby (station list) + station header
+   --------------------------------------------------------------------------- */
+.lobby-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
+.add-station-btn {
+  font-size: 0.95rem;
+  padding: 11px 20px;
+}
+
+.station-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.station-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 0;
+  text-decoration: none;
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+}
+
+.station-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
+}
+
+.station-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.station-title-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.station-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.station-by {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+  flex: none;
+}
+
+.station-listeners {
+  flex: none;
+  background: #2a2a38;
+  color: var(--accent-2);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.station-now {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  min-height: 1.3em;
+}
+
+.station-now-label {
+  color: var(--accent-2);
+  flex: none;
+}
+
+.station-now-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.station-now.idle {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.station-meta {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.lobby-empty {
+  text-align: center;
+  color: var(--muted);
+  margin-top: 32px;
+}
+
+.lobby-empty.hidden {
+  display: none;
+}
+
+.lobby-empty strong {
+  color: var(--text);
+}
+
+/* Back-to-lobby link on a station page */
+.back-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: var(--card);
+  border: 1px solid #2a2a38;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 1.4rem;
+  line-height: 1;
+  transition: border-color 0.15s ease, transform 0.1s ease;
+}
+
+.back-link:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+

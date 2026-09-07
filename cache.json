@@ -93,7 +93,7 @@
     "url": "https://www.youtube.com/watch?v=6VpzTnosBjA",
     "videoId": "6VpzTnosBjA",
     "title": "מאיר בנאי - לך אלי (אודיו)",
-    "duration": 348
+    "duration": 349
   },
   "https://www.youtube.com/watch?v=GvgqDSnpRQM": {
     "url": "https://www.youtube.com/watch?v=GvgqDSnpRQM",
@@ -340,5 +340,35 @@
     "videoId": "sf6LD2B_kDQ",
     "title": "Lindsey Stirling - Elements (Dubstep Violin Original Song)",
     "duration": 247
+  },
+  "https://www.youtube.com/watch?v=A_MjCqQoLLA": {
+    "url": "https://www.youtube.com/watch?v=A_MjCqQoLLA",
+    "videoId": "A_MjCqQoLLA",
+    "title": "The Beatles - The Beatles - Hey Jude (Official Music Video) [Remastered 2015]",
+    "duration": 490
+  },
+  "https://www.youtube.com/watch?v=fJ9rUzIMcZQ": {
+    "url": "https://www.youtube.com/watch?v=fJ9rUzIMcZQ",
+    "videoId": "fJ9rUzIMcZQ",
+    "title": "Queen – Bohemian Rhapsody (Official Video Remastered)",
+    "duration": 360
+  },
+  "https://www.youtube.com/watch?v=yKNxeF4KMsY": {
+    "url": "https://www.youtube.com/watch?v=yKNxeF4KMsY",
+    "videoId": "yKNxeF4KMsY",
+    "title": "Coldplay - Yellow (Official Video)",
+    "duration": 273
+  },
+  "https://www.youtube.com/watch?v=r6fO-Ki9LzE": {
+    "url": "https://www.youtube.com/watch?v=r6fO-Ki9LzE",
+    "videoId": "r6fO-Ki9LzE",
+    "title": "Tiësto - Live at the Great Pyramids of Giza 2025 (Full Set)",
+    "duration": 10774
+  },
+  "https://www.youtube.com/watch?v=BZkxE0YNj8o": {
+    "url": "https://www.youtube.com/watch?v=BZkxE0YNj8o",
+    "videoId": "BZkxE0YNj8o",
+    "title": "This Video is NOT about Candace Owens",
+    "duration": 9362
   }
 }

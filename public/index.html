@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ElBitBox</title>
+    <title>ElBitBox — Stations</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -20,103 +20,49 @@
             <span class="chip-edit">✎</span>
           </button>
         </div>
-        <p class="subtitle">Shared network jukebox</p>
+        <p class="subtitle">Pick a station or start your own</p>
       </header>
 
-      <section class="now-playing card">
-        <div class="np-label">Now Playing</div>
-        <div id="nowPlaying" class="np-title">Nothing playing yet</div>
-        <div id="nowBy" class="np-by"></div>
-        <div class="player-wrap">
-          <div id="player"></div>
-          <button id="joinBtn" class="join-btn overlay">▶ Tap to join</button>
-        </div>
-        <button id="skipBtn" class="skip-btn hidden">⏭ Skip</button>
+      <section class="lobby-actions">
+        <button id="addStationBtn" class="btn-primary add-station-btn">＋ Add Station</button>
       </section>
 
-      <section class="add card">
-        <div class="add-tabs" role="tablist">
-          <button id="tabSearch" class="add-tab active" role="tab" type="button">Search</button>
-          <button id="tabLink" class="add-tab" role="tab" type="button">Set Link</button>
-        </div>
-
-        <form id="searchForm" class="add-form add-panel">
-          <div class="search-box">
-            <input
-              id="searchInput"
-              type="text"
-              placeholder="Search YouTube…"
-              autocomplete="off"
-            />
-            <ul id="searchSuggestions" class="suggestions hidden"></ul>
-          </div>
-          <button type="submit">Add</button>
-        </form>
-
-        <form id="addForm" class="add-form add-panel hidden">
-          <input
-            id="urlInput"
-            type="url"
-            placeholder="Paste a YouTube video or playlist link…"
-            autocomplete="off"
-            required
-          />
-          <button type="submit" id="addVideoBtn">Add Video</button>
-          <button type="button" id="addPlaylistBtn" class="btn-secondary">Add Playlist</button>
-        </form>
-
-        <div id="addProgress" class="add-progress hidden">
-          <div class="add-progress-bar"></div>
-          <span class="add-progress-label">Adding song…</span>
-        </div>
-      </section>
-
-      <section class="queue card">
-        <h2>Up Next <span id="queueCount" class="count">0</span></h2>
-        <ol id="playlist" class="playlist">
-          <li class="empty">The playlist is empty. Add a song!</li>
-        </ol>
-      </section>
+      <section id="stationList" class="station-list"></section>
+      <p id="emptyState" class="lobby-empty hidden">
+        No stations yet. Hit <strong>Add Station</strong> to create the first one!
+      </p>
 
       <div id="toast" class="toast"></div>
     </main>
 
-    <aside id="actionsDrawer" class="drawer drawer-left collapsed">
-      <button type="button" id="actionsToggle" class="drawer-handle">
-        <span class="drawer-handle-icon">📋</span>
-        <span class="drawer-handle-text">Activity</span>
-      </button>
-      <div class="drawer-body">
-        <h3 class="drawer-title">Activity</h3>
-        <ul id="actionsList" class="log-list"></ul>
-      </div>
-    </aside>
-
-    <aside id="chatDrawer" class="drawer drawer-right collapsed">
-      <button type="button" id="chatToggle" class="drawer-handle">
-        <span class="drawer-handle-icon">💬</span>
-        <span class="drawer-handle-text">Chat</span>
-      </button>
-      <div class="drawer-body">
-        <h3 class="drawer-title">Chat</h3>
-        <ul id="chatList" class="chat-list"></ul>
-        <form id="chatForm" class="chat-form">
+    <!-- Create-station modal -->
+    <div id="stationModal" class="modal-overlay hidden">
+      <div class="modal card">
+        <h2>New station</h2>
+        <p class="modal-hint">Give your station a name. Others will find it in the lobby.</p>
+        <form id="stationForm">
+          <label class="modal-label" for="stationNameInput">Station name</label>
           <input
-            id="chatInput"
+            id="stationNameInput"
+            class="modal-input"
             type="text"
-            maxlength="300"
-            placeholder="Message everyone…"
+            maxlength="40"
+            placeholder="e.g. Chill Vibes"
             autocomplete="off"
           />
-          <button type="submit">Send</button>
+          <div class="modal-actions">
+            <button id="stationCancel" type="button" class="btn-ghost">Cancel</button>
+            <button type="submit" class="btn-primary">Create &amp; enter</button>
+          </div>
         </form>
       </div>
-    </aside>
+    </div>
 
+    <!-- Shared identity modal (also used on station pages) -->
     <div id="profileModal" class="modal-overlay hidden">
       <div class="modal card">
         <h2 id="profileModalTitle">Choose your identity</h2>
-        <p class="modal-hint">Pick a nickname and an avatar so others know who's adding songs.</p>
+        <p class="modal-hint">Pick a nickname and an avatar so others know who's here.</p>
         <label class="modal-label" for="nickInput">Nickname</label>
         <input
           id="nickInput"
@@ -129,12 +75,13 @@
         <div class="modal-label">Avatar</div>
         <div id="avatarGrid" class="avatar-grid"></div>
         <div class="modal-actions">
-          <button id="profileCancel" type="button" class="btn-ghost">Cancel</button>
+          <!-- No cancel: identity is required before entering any station -->
           <button id="profileSave" type="button" class="btn-primary">Save</button>
         </div>
       </div>
     </div>
 
-    <script src="app.js"></script>
+    <script src="profile.js"></script>
+    <script src="lobby.js"></script>
   </body>
 </html>

@@ -4,9 +4,6 @@
   "description": "A shared network jukebox (bitbox) server. Clients add YouTube songs to a shared playlist and everyone listens to the same synchronized stream.",
   "main": "server.js",
   "type": "commonjs",
-  "engines": {
-    "node": "22.x"
-  },
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js"

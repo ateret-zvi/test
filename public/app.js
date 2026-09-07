@@ -1,14 +1,29 @@
-// elBitBox client — synchronized YouTube player.
+// elBitBox station client — synchronized YouTube player for one station.
 //
-// The server is the conductor: it tells every client which video is playing and
-// exactly when it started. Each browser embeds the YouTube IFrame player and
-// seeks to the shared position, so everyone watches/listens in sync. New
-// joiners jump straight to the current spot.
+// The server is the conductor: it tells every client tuned to THIS station which
+// video is playing and exactly when it started. Each browser embeds the YouTube
+// IFrame player and seeks to the shared position, so everyone watches/listens in
+// sync. New joiners jump straight to the current spot.
+//
+// The station is identified by the first path segment, e.g. /chill-vibes.
+// Identity (nickname + avatar) is handled by the shared Profile module.
+
+// Which station is this page? First URL path segment, e.g. "/chill-vibes".
+const STATION_SLUG = decodeURIComponent(location.pathname.replace(/^\/+/, '').split('/')[0] || '');
+if (!STATION_SLUG) {
+  // No station in the URL — back to the lobby.
+  location.href = '/';
+}
+const API = `/api/stations/${encodeURIComponent(STATION_SLUG)}`;
 
 const joinBtn = document.getElementById('joinBtn');
 const skipBtn = document.getElementById('skipBtn');
 const nowPlaying = document.getElementById('nowPlaying');
 const nowBy = document.getElementById('nowBy');
+const stationNameEl = document.getElementById('stationName');
+const stationByEl = document.getElementById('stationBy');
+const listenerCountEl = document.getElementById('listenerCount');
+const listenersRow = document.getElementById('listenersRow');
 const playlistEl = document.getElementById('playlist');
 const queueCount = document.getElementById('queueCount');
 const addForm = document.getElementById('addForm');
@@ -24,21 +39,6 @@ const searchForm = document.getElementById('searchForm');
 const searchInput = document.getElementById('searchInput');
 const searchSuggestions = document.getElementById('searchSuggestions');
 
-// Profile UI
-const profileChip = document.getElementById('profileChip');
-const profileAvatar = document.getElementById('profileAvatar');
-const profileNick = document.getElementById('profileNick');
-const profileModal = document.getElementById('profileModal');
-const nickInput = document.getElementById('nickInput');
-const avatarGrid = document.getElementById('avatarGrid');
-const profileSave = document.getElementById('profileSave');
-const profileCancel = document.getElementById('profileCancel');
-
-const AVATARS = [
-  '🦊', '🐼', '🐙', '🦄', '🐸', '🐵', '🐯', '🐧', '🐨', '🦁', '🐮', '🐷', '🐳', '🦉', '🐝', '🐢',
-  '🐰', '🐹', '🐺', '🦝', '🦔', '🐴', '🐔', '🦆', '🦅', '🦋', '🐬', '🦈', '🐊', '🦖', '🦕', '🐌',
-];
-
 // ---------------------------------------------------------------------------
 // Shared-timeline state
 // ---------------------------------------------------------------------------
@@ -50,6 +50,7 @@ let joined = false; // has the user tapped (so we may play with sound)?
 // Latest "now playing" info from the server.
 let currentVideoId = null; // what the server says should play
 let loadedVideoId = null; // what the local player currently has loaded
+let erroredVideoId = null; // last video the player refused to play (report once)
 let startedAt = 0; // server epoch ms when the current song began
 let clockOffset = 0; // (client clock - server clock), ms
 
@@ -87,6 +88,26 @@ window.onYouTubeIframeAPIReady = function () {
       onStateChange: (e) => {
         // When the local video ends, nudge the server to advance.
         if (e.data === YT.PlayerState.ENDED && ws && currentVideoId) {
+          ws.send(JSON.stringify({ type: 'ended', videoId: currentVideoId }));
+        }
+      },
+      onError: (e) => {
+        // The player can't show this video. Codes 101/150 mean the owner
+        // disabled embedding (the "Video unavailable / Watch on YouTube"
+        // screen); 100 means removed/private; 2/5 are bad-parameter/HTML5
+        // errors. In every case this video won't play here, so nudge the
+        // server to advance past it (same path as the 'ended' fallback).
+        // Guard so each dud is reported only once.
+        if (!currentVideoId || currentVideoId === erroredVideoId) return;
+        erroredVideoId = currentVideoId;
+        const embedBlocked = e.data === 101 || e.data === 150;
+        showToast(
+          embedBlocked
+            ? 'That video blocks embedding — skipping.'
+            : 'Video unavailable — skipping.',
+          true
+        );
+        if (ws && ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ type: 'ended', videoId: currentVideoId }));
         }
       },
@@ -156,8 +177,8 @@ joinBtn.addEventListener('click', () => {
 });
 
 skipBtn.addEventListener('click', () => {
-  const p = loadProfile();
-  fetch('/skip', {
+  const p = Profile.load();
+  fetch(`${API}/skip`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ nick: p ? p.nick : '', avatar: p ? p.avatar : '' }),
@@ -169,6 +190,15 @@ skipBtn.addEventListener('click', () => {
 // ---------------------------------------------------------------------------
 function renderState(state) {
   clockOffset = Date.now() - state.serverNow;
+
+  if (state.station) {
+    stationNameEl.textContent = state.station.name;
+    document.title = `${state.station.name} — ElBitBox`;
+    const owner = state.station.createdBy;
+    stationByEl.textContent = owner && owner.nick ? `by ${owner.nick}` : '';
+  }
+
+  renderListeners(state.listeners || [], state.listenerCount || 0);
 
   if (state.current) {
     currentVideoId = state.current.videoId;
@@ -281,7 +311,7 @@ function renderState(state) {
 
 /** Ask the server to move a queued song up or down. */
 function moveSong(id, dir) {
-  fetch('/move', {
+  fetch(`${API}/move`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id, dir }),
@@ -289,12 +319,54 @@ function moveSong(id, dir) {
 }
 
 // ---------------------------------------------------------------------------
+// Listeners row — avatars of everyone tuned in (first 10, then …)
+// ---------------------------------------------------------------------------
+function renderListeners(list, count) {
+  listenerCountEl.textContent = String(count);
+  listenersRow.innerHTML = '';
+
+  if (!count) {
+    const none = document.createElement('span');
+    none.className = 'listeners-empty';
+    none.textContent = 'No one here yet';
+    listenersRow.appendChild(none);
+    return;
+  }
+
+  list.slice(0, 20).forEach((l) => {
+    const item = document.createElement('span');
+    item.className = 'listener';
+    item.title = l.nick || '';
+
+    const avatar = document.createElement('span');
+    avatar.className = 'listener-avatar';
+    avatar.textContent = l.avatar || '🎧';
+
+    const name = document.createElement('span');
+    name.className = 'listener-name';
+    name.textContent = l.nick || 'anon';
+
+    item.appendChild(avatar);
+    item.appendChild(name);
+    listenersRow.appendChild(item);
+  });
+
+  if (count > 20) {
+    const more = document.createElement('span');
+    more.className = 'listener-more';
+    more.textContent = '...';
+    more.title = `${count - 20} more`;
+    listenersRow.appendChild(more);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Remove a song
 // ---------------------------------------------------------------------------
 /** Ask the server to remove a queued song immediately. */
 function removeSong(id) {
-  const p = loadProfile();
-  fetch('/remove', {
+  const p = Profile.load();
+  fetch(`${API}/remove`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id, nick: p ? p.nick : '', avatar: p ? p.avatar : '' }),
@@ -312,13 +384,18 @@ function showToast(message, isError) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => toast.classList.remove('show'), 3200);
 }
+// Let the shared Profile module reuse this nicer toast.
+window.showToast = showToast;
 
 // ---------------------------------------------------------------------------
-// WebSocket: live playlist + notifications
+// WebSocket: live playlist + notifications for THIS station
 // ---------------------------------------------------------------------------
 function connectWs() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  ws = new WebSocket(`${proto}://${location.host}/ws`);
+  ws = new WebSocket(`${proto}://${location.host}/ws?station=${encodeURIComponent(STATION_SLUG)}`);
+
+  // Announce our identity so we show up in the listeners row for everyone.
+  ws.addEventListener('open', sendHello);
 
   ws.addEventListener('message', (ev) => {
     const data = JSON.parse(ev.data);
@@ -341,96 +418,15 @@ function connectWs() {
   });
 }
 
-// ---------------------------------------------------------------------------
-// Profile (nickname + avatar), persisted in the browser
-// ---------------------------------------------------------------------------
-const PROFILE_KEY = 'elbitbox.profile';
-let pendingAdd = null;
-let selectedAvatar = null;
-
-function loadProfile() {
-  try {
-    const raw = localStorage.getItem(PROFILE_KEY);
-    if (!raw) return null;
-    const p = JSON.parse(raw);
-    return p && p.nick && p.avatar ? p : null;
-  } catch {
-    return null;
-  }
+/** Tell the server who we are (used for the listeners row). */
+function sendHello() {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  const p = Profile.load();
+  ws.send(JSON.stringify({ type: 'hello', nick: p ? p.nick : '', avatar: p ? p.avatar : '' }));
 }
 
-function saveProfile(p) {
-  localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
-}
-
-function renderProfileChip() {
-  const p = loadProfile();
-  if (p) {
-    profileAvatar.textContent = p.avatar;
-    profileNick.textContent = p.nick;
-    profileChip.classList.remove('hidden');
-  } else {
-    profileChip.classList.add('hidden');
-  }
-}
-
-function buildAvatarGrid() {
-  avatarGrid.innerHTML = '';
-  AVATARS.forEach((emoji) => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'avatar-option';
-    btn.textContent = emoji;
-    if (emoji === selectedAvatar) btn.classList.add('selected');
-    btn.addEventListener('click', () => {
-      selectedAvatar = emoji;
-      avatarGrid
-        .querySelectorAll('.avatar-option')
-        .forEach((b) => b.classList.toggle('selected', b.textContent === emoji));
-    });
-    avatarGrid.appendChild(btn);
-  });
-}
-
-function openProfileModal() {
-  const p = loadProfile();
-  nickInput.value = p ? p.nick : '';
-  selectedAvatar = p ? p.avatar : null;
-  buildAvatarGrid();
-  profileModal.classList.remove('hidden');
-  nickInput.focus();
-}
-
-function closeProfileModal() {
-  profileModal.classList.add('hidden');
-  pendingAdd = null;
-}
-
-profileChip.addEventListener('click', openProfileModal);
-profileCancel.addEventListener('click', closeProfileModal);
-profileModal.addEventListener('click', (e) => {
-  if (e.target === profileModal) closeProfileModal();
-});
-
-profileSave.addEventListener('click', () => {
-  const nick = nickInput.value.trim();
-  if (!nick) {
-    showToast('Please enter a nickname.', true);
-    nickInput.focus();
-    return;
-  }
-  if (!selectedAvatar) {
-    showToast('Please pick an avatar.', true);
-    return;
-  }
-  saveProfile({ nick, avatar: selectedAvatar });
-  renderProfileChip();
-  profileModal.classList.add('hidden');
-
-  const payload = pendingAdd;
-  pendingAdd = null;
-  if (payload) submitAdd(payload);
-});
+// Re-announce whenever the user sets or edits their profile.
+window.addEventListener('profilechange', sendHello);
 
 // ---------------------------------------------------------------------------
 // Add song
@@ -461,7 +457,7 @@ function resolveAddProgress() {
 }
 
 async function submitAdd(payload) {
-  const profile = loadProfile();
+  const profile = Profile.load();
   const formEl = payload.query ? searchForm : addForm;
   const btns = formEl.querySelectorAll('button');
   btns.forEach((b) => (b.disabled = true));
@@ -469,7 +465,7 @@ async function submitAdd(payload) {
   // server's fast 'added' broadcast arrives for cached songs.
   showAddProgress();
   try {
-    const res = await fetch('/add', {
+    const res = await fetch(`${API}/add`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -522,13 +518,7 @@ searchForm.addEventListener('submit', (e) => {
 
 /** Ensure the user has a profile, then add the given payload. */
 function requireProfileThen(payload) {
-  // First-time users must choose a nickname + avatar before adding.
-  if (!loadProfile()) {
-    pendingAdd = payload;
-    openProfileModal();
-    return;
-  }
-  submitAdd(payload);
+  Profile.require(() => submitAdd(payload));
 }
 
 // ---------------------------------------------------------------------------
@@ -581,7 +571,7 @@ async function fetchSuggestions(q) {
   if (suggestAbort) suggestAbort.abort();
   suggestAbort = new AbortController();
   try {
-    const res = await fetch(`/suggest?q=${encodeURIComponent(q)}`, {
+    const res = await fetch(`/api/suggest?q=${encodeURIComponent(q)}`, {
       signal: suggestAbort.signal,
     });
     if (!res.ok) return;
@@ -724,10 +714,10 @@ chatForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const text = chatInput.value.trim();
   if (!text) return;
-  const profile = loadProfile();
+  const profile = Profile.load();
   if (!profile) {
     showToast('Set your nickname first.', true);
-    openProfileModal();
+    Profile.open();
     return;
   }
   if (ws && ws.readyState === WebSocket.OPEN) {
@@ -741,11 +731,23 @@ chatForm.addEventListener('submit', (e) => {
 // ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
-renderProfileChip();
-// Ask first-time users for a nickname + avatar right away.
-if (!loadProfile()) openProfileModal();
-fetch('/state')
-  .then((r) => r.json())
-  .then(renderState)
+Profile.renderChip();
+// Ask first-time users for a nickname + avatar right away (required to take part).
+if (!Profile.load()) Profile.open();
+
+// Validate the station exists; if not, send the user back to the lobby.
+fetch(`${API}/state`)
+  .then((r) => {
+    if (!r.ok) {
+      location.href = '/';
+      return null;
+    }
+    return r.json();
+  })
+  .then((state) => {
+    if (state) {
+      renderState(state);
+      connectWs();
+    }
+  })
   .catch(() => {});
-connectWs();
