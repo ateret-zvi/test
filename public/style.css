@@ -354,6 +354,7 @@ body {
 
 .add-form input {
   flex: 1;
+  min-width: 0;
   background: #12121a;
   border: 1px solid #2a2a38;
   color: var(--text);
@@ -761,6 +762,7 @@ body {
   position: fixed;
   top: 0;
   height: 100vh;
+  height: 100dvh;
   width: 320px;
   max-width: 85vw;
   background: var(--card);
@@ -1095,5 +1097,30 @@ body {
 .back-link:hover {
   border-color: var(--accent);
   transform: translateY(-1px);
+}
+
+/* ---------------------------------------------------------------------------
+   Mobile / narrow-screen tweaks
+   --------------------------------------------------------------------------- */
+@media (max-width: 560px) {
+  /* Prevent the app content from forcing horizontal overflow, which would
+     push the fixed drawer handles off the edge of the screen. */
+  body {
+    overflow-x: hidden;
+  }
+
+  /* The "Set Link" panel has three controls (URL input + two buttons) that
+     don't fit on one row on a phone. Let them wrap instead of overflowing. */
+  #addForm {
+    flex-wrap: wrap;
+  }
+
+  #addForm input {
+    flex: 1 1 100%;
+  }
+
+  #addForm button {
+    flex: 1 1 0;
+  }
 }
 

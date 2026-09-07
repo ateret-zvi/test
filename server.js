@@ -177,14 +177,10 @@ function slugify(name) {
 const stations = new Map();
 
 /** Build a fresh, empty station from a display name. */
-function createStation(name, createdBy) {
+function createStation(name) {
   return {
     name: String(name).slice(0, 40),
     slug: slugify(name),
-    createdBy: {
-      nick: (createdBy && createdBy.nick) || '',
-      avatar: (createdBy && createdBy.avatar) || '',
-    },
     playlist: [],
     current: null,
     startedAt: 0, // epoch ms when `current` began playing
@@ -216,11 +212,6 @@ function countListeners(slug) {
   return stationClients(slug).length;
 }
 
-/** The identities (nick + avatar) of everyone currently listening to a station. */
-function stationListeners(slug) {
-  return stationClients(slug).map((ws) => ws.listener || { nick: '', avatar: '' });
-}
-
 /** Send a JSON object to every client tuned to one station. */
 function sendToStation(slug, obj) {
   const msg = JSON.stringify(obj);
@@ -228,13 +219,10 @@ function sendToStation(slug, obj) {
 }
 
 function stateSnapshot(station) {
-  const listeners = stationListeners(station.slug);
   return {
     type: 'state',
-    station: { slug: station.slug, name: station.name, createdBy: station.createdBy || null },
+    station: { slug: station.slug, name: station.name },
     serverNow: Date.now(),
-    listenerCount: listeners.length,
-    listeners: listeners.slice(0, 30),
     current: station.current
       ? {
           id: station.current.id,
@@ -280,7 +268,6 @@ function lobbySnapshot() {
       .map((s) => ({
         slug: s.slug,
         name: s.name,
-        createdBy: s.createdBy || null,
         listeners: countListeners(s.slug),
         queueLength: s.playlist.length,
         current: s.current ? { title: s.current.title, videoId: s.current.videoId } : null,
@@ -553,9 +540,9 @@ async function resolveSearch(query) {
   // Flat search returns just id/title/duration per hit. Crucially it skips full
   // video extraction (nsig challenge + googlevideo format URLs), which is slow
   // and intermittently 403s on locked-down networks — the same reason
-  // resolvePlaylist() uses flatPlaylist. We pull a few results so we can prefer
-  // one that's actually embeddable.
-  const info = await youtubedl(`ytsearch5:${query}`, {
+  // resolvePlaylist() uses flatPlaylist. We pull several results so we can skip
+  // over any that aren't embeddable and still find a playable one.
+  const info = await youtubedl(`ytsearch8:${query}`, {
     dumpSingleJson: true,
     flatPlaylist: true,
     noWarnings: true,
@@ -568,14 +555,20 @@ async function resolveSearch(query) {
   if (!entries.length) throw new Error('No results found for that search.');
 
   // Many official music videos disable embedding, so the IFrame player would
-  // show "Video unavailable". Prefer the first result YouTube lets us embed;
-  // fall back to the top hit if none pass (fail-open, no worse than before).
-  let entry = entries[0];
+  // just show "Video unavailable". Filter those out and take the first result
+  // YouTube actually lets us embed. checkEmbeddable() fails open, so only videos
+  // that explicitly block embedding are dropped — a flaky network won't reject a
+  // good hit. If every result blocks embedding, tell the user instead of
+  // queuing something that can't play.
+  let entry = null;
   for (const candidate of entries) {
     if (await checkEmbeddable(candidate.id)) {
       entry = candidate;
       break;
     }
+  }
+  if (!entry) {
+    throw new Error('Those results all block embedding. Try a different search.');
   }
 
   const url = `https://www.youtube.com/watch?v=${entry.id}`;
@@ -644,7 +637,7 @@ app.post('/api/stations', (req, res) => {
       .json({ error: 'A station with a similar name already exists.', slug });
   }
 
-  const station = createStation(name, readActor(req.body));
+  const station = createStation(name);
   stations.set(slug, station);
   broadcastLobby();
   console.log(`+ station "${station.name}" (/${station.slug})`);
@@ -824,7 +817,6 @@ wss.on('connection', (ws, req) => {
   }
 
   ws.stationSlug = slug;
-  ws.listener = { nick: '', avatar: '' }; // filled in by the client's 'hello'
   ws.send(JSON.stringify(stateSnapshot(station)));
   broadcastLobby(); // a listener just joined this station
 
@@ -833,13 +825,6 @@ wss.on('connection', (ws, req) => {
     try {
       data = JSON.parse(raw.toString());
     } catch {
-      return;
-    }
-    if (data.type === 'hello') {
-      // The client announces (or updates) its identity so it can appear in the
-      // listeners row on everyone's station page.
-      ws.listener = readActor(data);
-      notifyState(station);
       return;
     }
     if (data.type === 'ended' && data.videoId) endIfCurrent(station, data.videoId);
@@ -852,7 +837,7 @@ wss.on('connection', (ws, req) => {
     }
   });
 
-  ws.on('close', () => notifyState(station)); // a listener left this station
+  ws.on('close', () => broadcastLobby()); // a listener left this station
 });
 
 server.listen(PORT, () => {

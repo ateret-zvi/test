@@ -21,9 +21,6 @@ const skipBtn = document.getElementById('skipBtn');
 const nowPlaying = document.getElementById('nowPlaying');
 const nowBy = document.getElementById('nowBy');
 const stationNameEl = document.getElementById('stationName');
-const stationByEl = document.getElementById('stationBy');
-const listenerCountEl = document.getElementById('listenerCount');
-const listenersRow = document.getElementById('listenersRow');
 const playlistEl = document.getElementById('playlist');
 const queueCount = document.getElementById('queueCount');
 const addForm = document.getElementById('addForm');
@@ -194,11 +191,7 @@ function renderState(state) {
   if (state.station) {
     stationNameEl.textContent = state.station.name;
     document.title = `${state.station.name} — ElBitBox`;
-    const owner = state.station.createdBy;
-    stationByEl.textContent = owner && owner.nick ? `by ${owner.nick}` : '';
   }
-
-  renderListeners(state.listeners || [], state.listenerCount || 0);
 
   if (state.current) {
     currentVideoId = state.current.videoId;
@@ -319,48 +312,6 @@ function moveSong(id, dir) {
 }
 
 // ---------------------------------------------------------------------------
-// Listeners row — avatars of everyone tuned in (first 10, then …)
-// ---------------------------------------------------------------------------
-function renderListeners(list, count) {
-  listenerCountEl.textContent = String(count);
-  listenersRow.innerHTML = '';
-
-  if (!count) {
-    const none = document.createElement('span');
-    none.className = 'listeners-empty';
-    none.textContent = 'No one here yet';
-    listenersRow.appendChild(none);
-    return;
-  }
-
-  list.slice(0, 20).forEach((l) => {
-    const item = document.createElement('span');
-    item.className = 'listener';
-    item.title = l.nick || '';
-
-    const avatar = document.createElement('span');
-    avatar.className = 'listener-avatar';
-    avatar.textContent = l.avatar || '🎧';
-
-    const name = document.createElement('span');
-    name.className = 'listener-name';
-    name.textContent = l.nick || 'anon';
-
-    item.appendChild(avatar);
-    item.appendChild(name);
-    listenersRow.appendChild(item);
-  });
-
-  if (count > 20) {
-    const more = document.createElement('span');
-    more.className = 'listener-more';
-    more.textContent = '...';
-    more.title = `${count - 20} more`;
-    listenersRow.appendChild(more);
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Remove a song
 // ---------------------------------------------------------------------------
 /** Ask the server to remove a queued song immediately. */
@@ -394,9 +345,6 @@ function connectWs() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   ws = new WebSocket(`${proto}://${location.host}/ws?station=${encodeURIComponent(STATION_SLUG)}`);
 
-  // Announce our identity so we show up in the listeners row for everyone.
-  ws.addEventListener('open', sendHello);
-
   ws.addEventListener('message', (ev) => {
     const data = JSON.parse(ev.data);
     if (data.type === 'state') {
@@ -417,16 +365,6 @@ function connectWs() {
     setTimeout(connectWs, 2000);
   });
 }
-
-/** Tell the server who we are (used for the listeners row). */
-function sendHello() {
-  if (!ws || ws.readyState !== WebSocket.OPEN) return;
-  const p = Profile.load();
-  ws.send(JSON.stringify({ type: 'hello', nick: p ? p.nick : '', avatar: p ? p.avatar : '' }));
-}
-
-// Re-announce whenever the user sets or edits their profile.
-window.addEventListener('profilechange', sendHello);
 
 // ---------------------------------------------------------------------------
 // Add song
