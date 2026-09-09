@@ -37,6 +37,14 @@ body {
   gap: 12px;
 }
 
+/* Station page: second header row — back button + station name. */
+.station-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
 .brand {
   display: flex;
   align-items: center;
@@ -45,6 +53,47 @@ body {
 
 .brand .logo {
   font-size: 1.6rem;
+}
+
+.app-logo {
+  height: 40px;
+  width: auto;
+  display: block;
+  object-fit: contain;
+}
+
+.app-title {
+  height: 40px;
+  width: auto;
+  display: block;
+  object-fit: contain;
+}
+
+/* Logo + title sit on one line in the lobby brand. */
+.app-logo-lobby {
+  height: 74px;
+}
+
+.app-title-lobby {
+  height: 64px;
+}
+
+/* Logo + title grouped together in the station page topbar. */
+.brand-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.app-logo-top {
+  height: 50px;
+  flex: none;
+}
+
+.app-title-top {
+  height: 44px;
+  flex: none;
 }
 
 .brand-name {
@@ -72,6 +121,36 @@ body {
 
 .profile-chip.hidden {
   display: none;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--card);
+  border: 1px solid #2a2a38;
+  color: var(--text);
+  border-radius: 999px;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: border-color 0.15s ease, transform 0.1s ease;
+}
+
+.share-btn:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.share-icon {
+  font-size: 1rem;
 }
 
 .chip-avatar {
@@ -671,6 +750,40 @@ body {
   border-color: var(--accent);
 }
 
+.modal-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 16px 0 4px;
+  cursor: pointer;
+}
+
+.modal-check input {
+  margin-top: 3px;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.modal-check-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.modal-check-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.modal-check-hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
 .avatar-grid {
   display: grid;
   grid-template-columns: repeat(8, 1fr);
@@ -1024,6 +1137,16 @@ body {
   flex: none;
 }
 
+.station-id {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  flex: none;
+}
+
 .station-listeners {
   flex: none;
   background: #2a2a38;
@@ -1121,6 +1244,56 @@ body {
 
   #addForm button {
     flex: 1 1 0;
+  }
+
+  /* On phones, anchor the collapsed drawer handles ("Activity" / "Chat")
+     to the vertical center instead of near the top. */
+  .drawer-handle {
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  /* Share button: icon only (hide the "Share" label to save room). */
+  .share-text {
+    display: none;
+  }
+
+  .share-btn {
+    gap: 0;
+    padding: 8px 10px;
+  }
+
+  /* Keep the logos from pushing the profile name off the edge of the screen.
+     Shrink them and cap the title width so the topbar never overflows. */
+  .topbar-actions {
+    flex: none;
+  }
+
+  .brand,
+  .brand-logo {
+    min-width: 0;
+  }
+
+  .app-logo-lobby {
+    height: 52px;
+  }
+
+  .app-title-lobby {
+    height: 44px;
+    max-width: 42vw;
+  }
+
+  .app-logo-top {
+    height: 40px;
+  }
+
+  .app-title-top {
+    height: 34px;
+    max-width: 38vw;
+  }
+
+  .chip-nick {
+    max-width: 96px;
   }
 }
 

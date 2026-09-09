@@ -1,11 +1,10 @@
 {
-  "name": "elbitbox",
+  "name": "DropIn",
   "version": "1.0.0",
   "description": "A shared network jukebox (bitbox) server. Clients add YouTube songs to a shared playlist and everyone listens to the same synchronized stream.",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {
-    "build": "mkdir -p bin && curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o bin/yt-dlp && chmod +x bin/yt-dlp",
     "start": "node server.js",
     "dev": "node --watch server.js"
   },

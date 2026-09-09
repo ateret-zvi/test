@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ElBitBox — Stations</title>
+    <title>DropIn — Stations</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
@@ -11,8 +11,8 @@
       <header class="header">
         <div class="topbar">
           <div class="brand">
-            <span class="logo">🎵</span>
-            <span class="brand-name">ElBitBox</span>
+            <img class="app-logo app-logo-lobby" src="logo2_bg_logo.png" alt="DropIn" />
+            <img class="app-title app-title-lobby" src="logo2_bg_title.png" alt="DropIn" />
           </div>
           <button id="profileChip" class="profile-chip hidden" title="Edit your profile">
             <span id="profileAvatar" class="chip-avatar"></span>
@@ -50,6 +50,16 @@
             placeholder="e.g. Chill Vibes"
             autocomplete="off"
           />
+          <label class="modal-check" for="stationPublicInput">
+            <input id="stationPublicInput" type="checkbox" checked />
+            <span class="modal-check-body">
+              <span class="modal-check-title">Public station</span>
+              <span class="modal-check-hint"
+                >Show it in the lobby. Uncheck to keep it private — reachable
+                only by sharing its link.</span
+              >
+            </span>
+          </label>
           <div class="modal-actions">
             <button id="stationCancel" type="button" class="btn-ghost">Cancel</button>
             <button type="submit" class="btn-primary">Create &amp; enter</button>

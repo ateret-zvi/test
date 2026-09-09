@@ -1,4 +1,4 @@
-// elBitBox station client — synchronized YouTube player for one station.
+// Dropin station client — synchronized YouTube player for one station.
 //
 // The server is the conductor: it tells every client tuned to THIS station which
 // video is playing and exactly when it started. Each browser embeds the YouTube
@@ -190,7 +190,7 @@ function renderState(state) {
 
   if (state.station) {
     stationNameEl.textContent = state.station.name;
-    document.title = `${state.station.name} — ElBitBox`;
+    document.title = `${state.station.name} — DropIn`;
   }
 
   if (state.current) {
@@ -337,6 +337,30 @@ function showToast(message, isError) {
 }
 // Let the shared Profile module reuse this nicer toast.
 window.showToast = showToast;
+
+// ---------------------------------------------------------------------------
+// Share this station's link
+// ---------------------------------------------------------------------------
+const shareBtn = document.getElementById('shareBtn');
+if (shareBtn) {
+  shareBtn.addEventListener('click', async () => {
+    const url = location.href;
+    const title = (stationNameEl && stationNameEl.textContent) || 'DropIn station';
+    try {
+      if (navigator.share) {
+        await navigator.share({ title, url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      showToast('Station link copied to clipboard.');
+    } catch (err) {
+      // A share sheet the user dismisses rejects with AbortError — ignore it.
+      if (err && err.name === 'AbortError') return;
+      // Clipboard API can be blocked (insecure origin); fall back to a prompt.
+      window.prompt('Copy this station link:', url);
+    }
+  });
+}
 
 // ---------------------------------------------------------------------------
 // WebSocket: live playlist + notifications for THIS station
@@ -611,7 +635,7 @@ function appendChat(m) {
   if (stick) chatList.scrollTop = chatList.scrollHeight;
 }
 
-const DRAWER_KEY = 'elbitbox.drawers';
+const DRAWER_KEY = 'dropin.drawers';
 function loadDrawerState() {
   try {
     return JSON.parse(localStorage.getItem(DRAWER_KEY)) || {};

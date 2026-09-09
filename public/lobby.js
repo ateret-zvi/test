@@ -1,4 +1,4 @@
-// elBitBox lobby — lists every station (live now-playing + listener counts) and
+// Dropin lobby — lists every station (live now-playing + listener counts) and
 // lets you spin up a new one. Each station lives at /<slug>. Entering or creating
 // a station requires an identity (nickname + avatar) first.
 
@@ -8,6 +8,7 @@ const addStationBtn = document.getElementById('addStationBtn');
 const stationModal = document.getElementById('stationModal');
 const stationForm = document.getElementById('stationForm');
 const stationNameInput = document.getElementById('stationNameInput');
+const stationPublicInput = document.getElementById('stationPublicInput');
 const stationCancel = document.getElementById('stationCancel');
 const toastEl = document.getElementById('toast');
 
@@ -46,6 +47,13 @@ function stationCard(s) {
   name.className = 'station-name';
   name.textContent = s.name;
   titleWrap.appendChild(name);
+  if (s.id) {
+    const id = document.createElement('span');
+    id.className = 'station-id';
+    id.textContent = `#${s.id}`;
+    id.title = 'Station id';
+    titleWrap.appendChild(id);
+  }
   if (s.createdBy && s.createdBy.nick) {
     const by = document.createElement('span');
     by.className = 'station-by';
@@ -112,6 +120,7 @@ function connectWs() {
 // ---------------------------------------------------------------------------
 function openStationModal() {
   stationNameInput.value = '';
+  stationPublicInput.checked = true;
   stationModal.classList.remove('hidden');
   stationNameInput.focus();
 }
@@ -140,15 +149,15 @@ stationForm.addEventListener('submit', async (e) => {
     const res = await fetch('/api/stations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, nick: p ? p.nick : '', avatar: p ? p.avatar : '' }),
+      body: JSON.stringify({
+        name,
+        isPublic: stationPublicInput.checked,
+        nick: p ? p.nick : '',
+        avatar: p ? p.avatar : '',
+      }),
     });
     const data = await res.json();
     if (!res.ok) {
-      // A matching station already exists — just walk in.
-      if (res.status === 409 && data.slug) {
-        location.href = `/${data.slug}`;
-        return;
-      }
       showToast(data.error || 'Could not create station.', true);
       return;
     }

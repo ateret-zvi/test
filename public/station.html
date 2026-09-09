@@ -3,26 +3,34 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ElBitBox — Station</title>
+    <title>DropIn — Station</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <main class="app">
       <header class="header">
         <div class="topbar">
-          <div class="brand">
-            <a href="/" class="back-link" title="All stations">‹</a>
-            <span class="logo">🎵</span>
-            <span class="brand-name" id="stationName">ElBitBox</span>
-            <span class="station-by" id="stationBy"></span>
+          <div class="brand-logo">
+            <img class="app-logo app-logo-top" src="logo2_bg_logo.png" alt="DropIn" />
+            <img class="app-title app-title-top" src="logo2_bg_title.png" alt="DropIn" />
           </div>
-          <button id="profileChip" class="profile-chip hidden" title="Edit your profile">
-            <span id="profileAvatar" class="chip-avatar"></span>
-            <span id="profileNick" class="chip-nick"></span>
-            <span class="chip-edit">✎</span>
-          </button>
+          <div class="topbar-actions">
+            <button id="shareBtn" class="share-btn" type="button" title="Copy station link">
+              <span class="share-icon">🔗</span>
+              <span class="share-text">Share</span>
+            </button>
+            <button id="profileChip" class="profile-chip hidden" title="Edit your profile">
+              <span id="profileAvatar" class="chip-avatar"></span>
+              <span id="profileNick" class="chip-nick"></span>
+              <span class="chip-edit">✎</span>
+            </button>
+          </div>
         </div>
-        <p class="subtitle">Shared network jukebox</p>
+        <div class="station-row">
+          <a href="/" class="back-link" title="All stations">‹</a>
+          <span class="brand-name" id="stationName">DropIn</span>
+          <span class="station-by" id="stationBy"></span>
+        </div>
       </header>
 
       <section class="listeners card">

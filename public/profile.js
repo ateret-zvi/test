@@ -1,4 +1,4 @@
-// Shared identity module for elBitBox — used by BOTH the lobby and each station.
+// Shared identity module for DropIn — used by BOTH the lobby and each station.
 //
 // It persists a { nick, avatar } profile in localStorage and drives the profile
 // chip + "choose your identity" modal. Both pages must include the matching
@@ -6,7 +6,7 @@
 // API on window.Profile so page scripts don't each re-implement identity.
 
 (function () {
-  const PROFILE_KEY = 'elbitbox.profile';
+  const PROFILE_KEY = 'dropin.profile';
   const AVATARS = [
     '🦊', '🐼', '🐙', '🦄', '🐸', '🐵', '🐯', '🐧', '🐨', '🦁', '🐮', '🐷', '🐳', '🦉', '🐝', '🐢',
     '🐰', '🐹', '🐺', '🦝', '🦔', '🐴', '🐔', '🦆', '🦅', '🦋', '🐬', '🦈', '🐊', '🦖', '🦕', '🐌',

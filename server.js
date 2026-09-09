@@ -1,5 +1,5 @@
 /**
- * elBitBox - a shared network jukebox (synchronized YouTube player).
+ * DropiIn - a shared network jukebox (synchronized YouTube player).
  *
  * How it works:
  *  - Serves a web page on port 8080.
@@ -230,11 +230,29 @@ function slugify(name) {
 /** @type {Map<string, Station>} */
 const stations = new Map();
 
-/** Build a fresh, empty station from a display name. */
-function createStation(name) {
+/** Generate a short, random station id (6 hex chars, e.g. "a1b2c3"). */
+function stationId() {
+  return crypto.randomBytes(3).toString('hex');
+}
+
+/**
+ * Build a fresh, empty station from a display name. Each station gets a random
+ * id that is folded into its slug (e.g. "chill-vibes-a1b2c3"), so two stations
+ * may share the same display name while still having distinct, unique URLs.
+ */
+function createStation(name, isPublic = true) {
+  const base = slugify(name);
+  let id;
+  let slug;
+  do {
+    id = stationId();
+    slug = base ? `${base}-${id}` : id;
+  } while (stations.has(slug) || RESERVED_SLUGS.has(slug));
   return {
     name: String(name).slice(0, 40),
-    slug: slugify(name),
+    id,
+    slug,
+    isPublic: isPublic !== false, // private stations are hidden from the lobby
     playlist: [],
     current: null,
     startedAt: 0, // epoch ms when `current` began playing
@@ -275,7 +293,7 @@ function sendToStation(slug, obj) {
 function stateSnapshot(station) {
   return {
     type: 'state',
-    station: { slug: station.slug, name: station.name },
+    station: { slug: station.slug, id: station.id, name: station.name },
     serverNow: Date.now(),
     current: station.current
       ? {
@@ -318,9 +336,11 @@ function lobbySnapshot() {
     type: 'lobby',
     serverNow: Date.now(),
     stations: [...stations.values()]
+      .filter((s) => s.isPublic) // private stations are reachable only by direct link
       .sort((a, b) => a.createdAt - b.createdAt)
       .map((s) => ({
         slug: s.slug,
+        id: s.id,
         name: s.name,
         listeners: countListeners(s.slug),
         queueLength: s.playlist.length,
@@ -676,26 +696,19 @@ app.get('/api/stations', (req, res) => {
   res.json(lobbySnapshot().stations);
 });
 
-// Create a new station. Body: { name }. Returns { slug, name }.
+// Create a new station. Body: { name, isPublic }. Returns { slug, name, id }.
+// Each station gets a unique id folded into its slug, so duplicate display
+// names are allowed — they simply live at different URLs.
 app.post('/api/stations', (req, res) => {
   const name = (req.body && req.body.name ? String(req.body.name) : '').trim();
   if (!name) return res.status(400).json({ error: 'Please provide a station name.' });
+  const isPublic = !(req.body && req.body.isPublic === false);
 
-  const slug = slugify(name);
-  if (!slug || RESERVED_SLUGS.has(slug)) {
-    return res.status(400).json({ error: 'That name is not allowed. Try another.' });
-  }
-  if (stations.has(slug)) {
-    return res
-      .status(409)
-      .json({ error: 'A station with a similar name already exists.', slug });
-  }
-
-  const station = createStation(name);
-  stations.set(slug, station);
+  const station = createStation(name, isPublic);
+  stations.set(station.slug, station);
   broadcastLobby();
   console.log(`+ station "${station.name}" (/${station.slug})`);
-  res.status(201).json({ slug: station.slug, name: station.name });
+  res.status(201).json({ slug: station.slug, name: station.name, id: station.id });
 });
 
 // Resolve the :slug route param to a station, or send a 404.
@@ -896,7 +909,7 @@ wss.on('connection', (ws, req) => {
 
 server.listen(PORT, () => {
   const host = os.hostname();
-  console.log(`\n  elBitBox is playing on http://localhost:${PORT}`);
+  console.log(`\n  DropIn is playing on http://localhost:${PORT}`);
   // YouTube's embedded player rejects a bare-IP origin (the "Video unavailable /
   // Watch on YouTube" screen), but accepts a hostname. Tell clients to use the
   // machine name, not the raw IP, so embed-restricted videos play for everyone.
