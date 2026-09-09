@@ -73,10 +73,21 @@ function searchDir(root, name, maxDepth) {
 function discoverBinary(base, envVar) {
   const target = exeName(base);
 
+  // 1. Explicit environment override
   const override = process.env[envVar];
-  if (override && fs.existsSync(override)) return override;
+  if (override && fs.existsSync(override)) {
+    return override;
+  }
 
+  // 2. Binary bundled with this application
+  const bundled = path.join(__dirname, 'bin', target);
+  if (fs.existsSync(bundled)) {
+    return bundled;
+  }
+
+  // 3. Common system locations
   const home = os.homedir();
+
   const roots = IS_WINDOWS
     ? [
         path.join(home, 'AppData', 'Local', 'Microsoft', 'WinGet', 'Packages'),
@@ -91,14 +102,17 @@ function discoverBinary(base, envVar) {
         path.join(home, '.local', 'bin'),
         path.join(home, 'bin'),
       ];
-  // Windows package managers nest binaries a few levels deep; the standard Linux
-  // bin directories hold the executable directly, so a shallow scan is enough.
+
   const depth = IS_WINDOWS ? 4 : 1;
+
   for (const root of roots) {
     const found = searchDir(root, target, depth);
-    if (found) return found;
+    if (found) {
+      return found;
+    }
   }
-  return null; // fall back to PATH
+
+  return null;
 }
 
 const YT_DLP_PATH = discoverBinary('yt-dlp', 'YT_DLP_PATH');
