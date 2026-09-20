@@ -284,6 +284,11 @@ function countListeners(slug) {
   return stationClients(slug).length;
 }
 
+/** Nick + avatar for every socket currently tuned to a station. */
+function listenerRoster(slug) {
+  return stationClients(slug).map((ws) => ({ nick: ws.nick || 'Anonymous', avatar: ws.avatar || '🎧' }));
+}
+
 /** Send a JSON object to every client tuned to one station. */
 function sendToStation(slug, obj) {
   const msg = JSON.stringify(obj);
@@ -296,6 +301,7 @@ function stateSnapshot(station) {
     station: { slug: station.slug, id: station.id, name: station.name },
     serverNow: Date.now(),
     listeners: countListeners(station.slug),
+    listenerList: listenerRoster(station.slug),
     current: station.current
       ? {
           id: station.current.id,
@@ -865,8 +871,13 @@ wss = new WebSocketServer({ server, path: '/ws' });
 wss.on('connection', (ws, req) => {
   // Which station (or the lobby) is this socket tuned to? e.g. /ws?station=chill
   let slug = LOBBY;
+  let nick = '';
+  let avatar = '';
   try {
-    slug = new URL(req.url, 'http://localhost').searchParams.get('station') || LOBBY;
+    const params = new URL(req.url, 'http://localhost').searchParams;
+    slug = params.get('station') || LOBBY;
+    nick = String(params.get('nick') || '').slice(0, 24);
+    avatar = String(params.get('avatar') || '').slice(0, 8);
   } catch {
     slug = LOBBY;
   }
@@ -885,6 +896,8 @@ wss.on('connection', (ws, req) => {
   }
 
   ws.stationSlug = slug;
+  ws.nick = nick;
+  ws.avatar = avatar;
   ws.send(JSON.stringify(stateSnapshot(station)));
   sendToStation(slug, stateSnapshot(station)); // update listener count for others already on the station
   broadcastLobby(); // a listener just joined this station
