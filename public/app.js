@@ -412,6 +412,10 @@ function connectWs() {
       if (data.event === 'added' || data.event === 'error') resolveAddProgress();
     } else if (data.type === 'chat') {
       appendChat(data.message);
+      const profile = Profile.load();
+      const isOwnMessage = profile && profile.nick && data.message.nick === profile.nick;
+      const chatOpen = chatDrawer && !chatDrawer.classList.contains('collapsed');
+      if (!isOwnMessage && !chatOpen) showChatNotify(data.message);
     } else if (data.type === 'action') {
       appendAction(data.action);
     }
@@ -653,6 +657,41 @@ function chatItemEl(m) {
   body.append(nick, text);
   li.append(av, body);
   return li;
+}
+
+// ---------------------------------------------------------------------------
+// Chat notification popups — shown at the top of the screen for incoming chat
+// messages when the chat drawer isn't already open and visible.
+// ---------------------------------------------------------------------------
+const chatNotifyStack = document.getElementById('chatNotifyStack');
+const CHAT_NOTIFY_DURATION = 3200;
+
+function showChatNotify(m) {
+  const el = document.createElement('div');
+  el.className = 'chat-notify';
+
+  const av = document.createElement('span');
+  av.className = 'chat-notify-avatar';
+  av.textContent = m.avatar || '🎧';
+
+  const body = document.createElement('div');
+  body.className = 'chat-notify-body';
+  const nick = document.createElement('span');
+  nick.className = 'chat-notify-nick';
+  nick.textContent = m.nick || 'Anon';
+  const text = document.createElement('span');
+  text.className = 'chat-notify-text';
+  text.textContent = m.text;
+  body.append(nick, text);
+
+  el.append(av, body);
+  chatNotifyStack.appendChild(el);
+
+  requestAnimationFrame(() => el.classList.add('show'));
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 250);
+  }, CHAT_NOTIFY_DURATION);
 }
 
 function renderChat(list) {

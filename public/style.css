@@ -693,6 +693,64 @@ body {
   background: #7a2233;
 }
 
+/* Chat notification popups */
+.chat-notify-stack {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  pointer-events: none;
+  width: min(360px, 90vw);
+}
+
+.chat-notify {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  background: #2a2a38;
+  color: var(--text);
+  padding: 10px 14px;
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  transform: translateY(-12px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.chat-notify.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.chat-notify-avatar {
+  font-size: 1.1em;
+  line-height: 1.3;
+}
+
+.chat-notify-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-notify-nick {
+  font-weight: 600;
+  font-size: 0.85em;
+  color: var(--muted);
+}
+
+.chat-notify-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Profile modal */
 .modal-overlay {
   position: fixed;
