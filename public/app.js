@@ -21,6 +21,8 @@ const skipBtn = document.getElementById('skipBtn');
 const nowPlaying = document.getElementById('nowPlaying');
 const nowBy = document.getElementById('nowBy');
 const stationNameEl = document.getElementById('stationName');
+const listenerCountEl = document.getElementById('listenerCount');
+const listenersRowEl = document.getElementById('listenersRow');
 const playlistEl = document.getElementById('playlist');
 const queueCount = document.getElementById('queueCount');
 const addForm = document.getElementById('addForm');
@@ -191,6 +193,33 @@ function renderState(state) {
   if (state.station) {
     stationNameEl.textContent = state.station.name;
     document.title = `${state.station.name} — DropIn`;
+  }
+
+  if (listenerCountEl && typeof state.listeners === 'number') {
+    listenerCountEl.textContent = state.listeners;
+  }
+
+  if (listenersRowEl && Array.isArray(state.listenerList)) {
+    listenersRowEl.innerHTML = '';
+    if (state.listenerList.length === 0) {
+      const empty = document.createElement('span');
+      empty.className = 'listeners-empty';
+      empty.textContent = 'No one here yet';
+      listenersRowEl.appendChild(empty);
+    }
+    for (const l of state.listenerList) {
+      const chip = document.createElement('span');
+      chip.className = 'listener';
+      chip.title = l.nick;
+      const av = document.createElement('span');
+      av.className = 'listener-avatar';
+      av.textContent = l.avatar;
+      const nameEl = document.createElement('span');
+      nameEl.className = 'listener-name';
+      nameEl.textContent = l.nick;
+      chip.append(av, nameEl);
+      listenersRowEl.appendChild(chip);
+    }
   }
 
   if (state.current) {
@@ -367,7 +396,11 @@ if (shareBtn) {
 // ---------------------------------------------------------------------------
 function connectWs() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  ws = new WebSocket(`${proto}://${location.host}/ws?station=${encodeURIComponent(STATION_SLUG)}`);
+  const profile = Profile.load();
+  const params = new URLSearchParams({ station: STATION_SLUG });
+  if (profile && profile.nick) params.set('nick', profile.nick);
+  if (profile && profile.avatar) params.set('avatar', profile.avatar);
+  ws = new WebSocket(`${proto}://${location.host}/ws?${params.toString()}`);
 
   ws.addEventListener('message', (ev) => {
     const data = JSON.parse(ev.data);
