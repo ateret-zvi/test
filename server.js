@@ -295,6 +295,7 @@ function stateSnapshot(station) {
     type: 'state',
     station: { slug: station.slug, id: station.id, name: station.name },
     serverNow: Date.now(),
+    listeners: countListeners(station.slug),
     current: station.current
       ? {
           id: station.current.id,
@@ -885,6 +886,7 @@ wss.on('connection', (ws, req) => {
 
   ws.stationSlug = slug;
   ws.send(JSON.stringify(stateSnapshot(station)));
+  sendToStation(slug, stateSnapshot(station)); // update listener count for others already on the station
   broadcastLobby(); // a listener just joined this station
 
   ws.on('message', (raw) => {
@@ -904,7 +906,10 @@ wss.on('connection', (ws, req) => {
     }
   });
 
-  ws.on('close', () => broadcastLobby()); // a listener left this station
+  ws.on('close', () => {
+    sendToStation(slug, stateSnapshot(station)); // update listener count for remaining listeners
+    broadcastLobby(); // a listener left this station
+  });
 });
 
 server.listen(PORT, () => {
